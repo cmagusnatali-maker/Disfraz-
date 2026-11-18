@@ -1,0 +1,23 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex"><title>Admin</title><link rel="stylesheet" href="style.css"></head><body><div class="w">
+<h1 style="font-size:2rem">ADMIN</h1>
+<div id="login"><input type="password" id="k" placeholder="Clave"><button class="btn" id="go">ENTRAR</button><p id="e"></p></div>
+<div id="app" hidden>
+<p class="sub" id="res"></p>
+<h3>Agregar / editar</h3>
+<input id="fn" placeholder="Nombre"><input id="fc" placeholder="Categoría (Mujeres, Hombres, Parejas, Graciosos, Terror, Niños)"><input id="fd" placeholder="Descripción"><input id="fi" placeholder="Link de imagen (opcional)">
+<button class="btn" id="gu">GUARDAR</button>
+<table id="t"></table></div></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.58.0/dist/umd/supabase.js"></script><script src="config.js"></script>
+<script>
+const sb=supabase.createClient(CFG.URL,CFG.KEY),$=i=>document.getElementById(i);let K='',eid=null;
+$('go').onclick=async()=>{K=$('k').value;const{data}=await sb.rpc('admin_ok',{p_clave:K});if(data){$('login').hidden=true;$('app').hidden=false;lista()}else $('e').textContent='Clave incorrecta'};
+async function lista(){const{data}=await sb.from('disfraces').select('*').order('categoria').order('nombre');
+ $('res').textContent=data.filter(x=>x.reservado).length+' reservados de '+data.length+' (no se guarda quién reservó)';
+ $('t').innerHTML='';data.forEach(x=>{const r=$('t').insertRow();r.insertCell().textContent=x.categoria+' · '+x.nombre;r.insertCell().textContent=x.reservado?'RESERVADO':'libre';
+  const c=r.insertCell();const mk=(t,f)=>{const b=document.createElement('button');b.className='sm';b.textContent=t;b.onclick=f;c.append(b)};
+  if(x.reservado)mk('Liberar',async()=>{await sb.rpc('admin_liberar',{p_clave:K,p_id:x.id});lista()});
+  mk('Editar',()=>{eid=x.id;$('fn').value=x.nombre;$('fc').value=x.categoria;$('fd').value=x.descripcion;$('fi').value=x.imagen;scrollTo(0,0)});
+  mk('Borrar',async()=>{if(confirm('¿Borrar '+x.nombre+'?')){await sb.rpc('admin_borrar',{p_clave:K,p_id:x.id});lista()}})})}
+$('gu').onclick=async()=>{if(!$('fn').value||!$('fc').value)return;await sb.rpc('admin_guardar',{p_clave:K,p_id:eid,p_nombre:$('fn').value,p_cat:$('fc').value,p_desc:$('fd').value,p_img:$('fi').value});eid=null;['fn','fc','fd','fi'].forEach(i=>$(i).value='');lista()};
+</script></body></html>

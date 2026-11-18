@@ -1,0 +1,56 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>LA NOCHE DEL DISFRAZ</title>
+<meta property="og:title" content="LA NOCHE DEL DISFRAZ">
+<meta property="og:description" content="Elegí tu personaje antes de que alguien más se adelante. 26 de noviembre · 22:30 hs">
+<meta name="theme-color" content="#0b0709"><link rel="stylesheet" href="style.css"></head><body>
+<div class="w">
+<header class="hero" id="inicio"><h1>LA NOCHE DEL DISFRAZ</h1>
+<div class="fr">Elegí tu personaje antes de que alguien más se adelante</div>
+<p class="sub">Acá vas a encontrar ideas para inspirarte y elegir tu disfraz. Buscá tu favorito, reserválo y preparate para una noche inolvidable.</p>
+<div class="ev"><span>26 de noviembre</span><span>22:30 hs</span><span>Paunero 771, Predio Barrio Parque</span></div>
+<a class="btn" href="#catalogo">VER DISFRACES</a></header>
+<main id="catalogo">
+<input type="search" id="q" placeholder="Buscar disfraz…">
+<div class="chips" id="chips"></div>
+<div class="bar"><label><input type="checkbox" id="solo" style="width:auto"> Solo disponibles</label><span id="cont"></span></div>
+<div class="grid" id="grid"></div><div class="empty" id="vacio" hidden>No hay disfraces en esta búsqueda.</div>
+</main>
+<button class="link" onclick="scrollTo({top:0,behavior:'smooth'})" style="display:block;margin:auto">↑ Volver al inicio</button></div>
+<div class="sheet" id="sheet"><div><h2 id="sn"></h2><p id="sm">¿Reservás este disfraz? Después no lo puede elegir nadie más.</p>
+<button class="btn" id="ok">CONFIRMAR RESERVA</button><button class="link" id="cn">Cancelar</button></div></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.58.0/dist/umd/supabase.js"></script>
+<script src="config.js"></script>
+<script>
+const sb=supabase.createClient(CFG.URL,CFG.KEY);
+const CATS=['Mujeres','Hombres','Parejas','Graciosos','Terror','Niños'];
+let data=[],cat='Todos',sel=null;
+const $=i=>document.getElementById(i);
+async function cargar(){const{data:d,error}=await sb.from('disfraces').select('id,nombre,categoria,descripcion,imagen,reservado').order('id');
+ if(error){$('grid').textContent='No se pudo cargar. Probá de nuevo.';return}data=d;pintar()}
+function pintar(){
+ const q=$('q').value.toLowerCase(),solo=$('solo').checked;
+ $('chips').innerHTML='';['Todos',...CATS].forEach(c=>{const b=document.createElement('button');b.className='chip'+(c===cat?' on':'');b.textContent=c;b.onclick=()=>{cat=c;pintar()};$('chips').append(b)});
+ const lib=data.filter(x=>!x.reservado).length;$('cont').textContent=lib+' disponibles · '+(data.length-lib)+' reservados';
+ const l=data.filter(x=>(cat==='Todos'||x.categoria===cat)&&(!solo||!x.reservado)&&(x.nombre+x.descripcion).toLowerCase().includes(q));
+ $('grid').innerHTML='';$('vacio').hidden=l.length>0;
+ l.forEach(x=>{const c=document.createElement('div');c.className='card'+(x.reservado?' tomado':'');
+  const im=document.createElement('div');im.className='img';if(x.imagen){const i=document.createElement('img');i.src=x.imagen;i.alt=x.nombre;i.loading='lazy';im.append(i)}else im.textContent=x.nombre[0];
+  const n=document.createElement('div');n.className='in';
+  const a=document.createElement('div');a.className='cat';a.textContent=x.categoria;
+  const h=document.createElement('h3');h.textContent=x.nombre;
+  const p=document.createElement('p');p.textContent=x.descripcion;
+  const s=document.createElement('div');s.className='st '+(x.reservado?'no':'ok');s.textContent=x.reservado?'NO DISPONIBLE':'DISPONIBLE';
+  n.append(a,h,p,s);
+  if(!x.reservado){const b=document.createElement('button');b.className='btn';b.textContent='RESERVAR';b.onclick=()=>abrir(x);n.append(b)}
+  c.append(im,n);$('grid').append(c)})}
+function abrir(x){sel=x;$('sn').textContent=x.nombre;$('sm').textContent='¿Reservás este disfraz? Después no lo puede elegir nadie más.';$('ok').hidden=false;$('cn').textContent='Cancelar';$('sheet').classList.add('on')}
+$('cn').onclick=()=>$('sheet').classList.remove('on');
+$('ok').onclick=async()=>{$('ok').disabled=true;const{data:r,error}=await sb.rpc('reservar',{p_id:sel.id});$('ok').disabled=false;
+ if(error){$('sm').textContent='Hubo un problema. Probá de nuevo.';return}
+ $('sn').textContent=r?'¡LISTO!':'Ups…';$('sm').textContent=r?'TU DISFRAZ YA ESTÁ RESERVADO. NOS VEMOS EN LA FIESTA':'Alguien lo reservó justo antes. Elegí otro disfraz.';
+ $('ok').hidden=true;$('cn').textContent='Cerrar';cargar()};
+$('q').oninput=pintar;$('solo').onchange=pintar;
+sb.channel('d').on('postgres_changes',{event:'*',schema:'public',table:'disfraces'},cargar).subscribe();
+setInterval(cargar,30000);cargar();
+</script></body></html>
